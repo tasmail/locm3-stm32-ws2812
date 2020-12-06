@@ -19,11 +19,11 @@
 
 BINARY = ws2812
 
-OBJS = main.o ws2812.o
+OBJS = main.o ws2812.o blinking.o
 
 CFLAGS = -std=c99
 
-LDSCRIPT = ../stm32f4-discovery.ld
+LDSCRIPT = ../stm32f401cc.ld
 
 include ../libopencm3.target.mk
 

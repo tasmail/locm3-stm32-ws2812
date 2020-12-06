@@ -22,6 +22,21 @@
 #ifndef WS2812_H
 #define WS2812_H
 
+#define WS_DMA DMA1
+#define WS_RCC_DMA RCC_DMA1
+#define WS_DMA_STREAM DMA_STREAM6
+#define WS_NVIC_DMA_STREAM_IRQ NVIC_DMA1_STREAM6_IRQ
+#define ws_dma_stream_isr dma1_stream6_isr
+
+#define WS_TIM TIM4
+#define WS_RCC_TIM RCC_TIM4
+#define WS_TIM_CCR TIM4_CCR1
+
+#define WS_GPIO GPIO6
+#define WS_GPIO_PORT GPIOB
+#define WS_RCC_GPIO RCC_GPIOB
+
+
 typedef union {
       struct __attribute__ ((__packed__)) {
 	uint8_t _unused;

@@ -26,6 +26,7 @@
 #include <libopencm3/cm3/nvic.h>
 
 #include "ws2812.h"
+#include "blinking.h"
 
 #define WS2812_BIT_BUFFER_SIZE (24*6)
 
@@ -66,12 +67,12 @@ void ws2812_init(void)
 
 void ws2812_dma_start(void)
 {
-	dma_enable_stream(DMA1, DMA_STREAM6);
+	dma_enable_stream(WS_DMA, WS_DMA_STREAM);
 }
 
 void ws2812_dma_stop(void)
 {
-	dma_disable_stream(DMA1, DMA_STREAM6);
+	dma_disable_stream(WS_DMA, WS_DMA_STREAM);
 }
 
 void ws2812_send(ws2812_led_t *leds, int led_count)
@@ -154,66 +155,65 @@ void ws2812_clear_bit_buffer(void) {
 /* Hardware dependent code. */
 void ws2812_gpio_init(void)
 {
-	rcc_periph_clock_enable(RCC_GPIOD);
-    gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO12);
-    gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13 | GPIO14);
-    gpio_set_af(GPIOD, GPIO_AF2, GPIO12);
-    /* Not sure why this does not really do the job if we have a pullup to 5V */
-    /* gpio_set_output_options(GPIOD, GPIO_OTYPE_OD, GPIO_OSPEED_2MHZ, GPIO12); */
+	rcc_periph_clock_enable(WS_RCC_GPIO);
+
+    gpio_mode_setup(WS_GPIO_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, WS_GPIO);
+    gpio_set_af(WS_GPIO_PORT, GPIO_AF2, WS_GPIO);
+    gpio_set_output_options(WS_GPIO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, WS_GPIO);
 }
 
 void ws2812_tim_init(void)
 {
-	rcc_periph_clock_enable(RCC_TIM4);
-    timer_reset(TIM4);
-    timer_set_mode(TIM4, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-    timer_set_prescaler(TIM4, 0);
-    timer_continuous_mode(TIM4);
-    timer_set_period(TIM4, 104); /* 168000000 / 2 / 800000 (800khz pwm) */
-    timer_disable_oc_output(TIM4, TIM_OC1);
-    timer_disable_oc_clear(TIM4, TIM_OC1);
-    timer_enable_oc_preload(TIM4, TIM_OC1);
-    timer_set_oc_slow_mode(TIM4, TIM_OC1);
-    timer_set_oc_mode(TIM4, TIM_OC1, TIM_OCM_PWM1);
-    timer_set_oc_polarity_high(TIM4, TIM_OC1);
-    timer_set_oc_value(TIM4, TIM_OC1, 0);
-    timer_enable_oc_output(TIM4, TIM_OC1);
-    timer_enable_preload(TIM4);
+	rcc_periph_clock_enable(WS_RCC_TIM);
+	// rcc_periph_reset_pulse(WS_RCC_TIM);
+    timer_set_mode(WS_TIM, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+    timer_set_prescaler(WS_TIM, 0);
+    timer_continuous_mode(WS_TIM);
+    timer_set_period(WS_TIM, 104); /* 84000000 / 2 / 800000 (800khz pwm) */
+    timer_disable_oc_output(WS_TIM, TIM_OC1);
+    timer_disable_oc_clear(WS_TIM, TIM_OC1);
+    timer_enable_oc_preload(WS_TIM, TIM_OC1);
+    timer_set_oc_slow_mode(WS_TIM, TIM_OC1);
+    timer_set_oc_mode(WS_TIM, TIM_OC1, TIM_OCM_PWM1);
+    timer_set_oc_polarity_high(WS_TIM, TIM_OC1);
+    timer_set_oc_value(WS_TIM, TIM_OC1, 0);
+    timer_enable_oc_output(WS_TIM, TIM_OC1);
+    timer_enable_preload(WS_TIM);
 
-    timer_enable_irq(TIM4, TIM_DIER_UDE);
-
-    timer_enable_counter(TIM4);
+    timer_enable_irq(WS_TIM, TIM_DIER_UDE);
+ 
+    timer_enable_counter(WS_TIM);
 }
 
 void ws2812_dma_init(void)
 {
-	rcc_periph_clock_enable(RCC_DMA1);
-    nvic_enable_irq(NVIC_DMA1_STREAM6_IRQ);
-	dma_stream_reset(DMA1, DMA_STREAM6);
-    dma_set_priority(DMA1, DMA_STREAM6, DMA_SxCR_PL_VERY_HIGH);
-    dma_set_memory_size(DMA1, DMA_STREAM6, DMA_SxCR_MSIZE_16BIT);
-    dma_set_peripheral_size(DMA1, DMA_STREAM6, DMA_SxCR_PSIZE_16BIT);
-    dma_enable_circular_mode(DMA1, DMA_STREAM6);
-    dma_enable_memory_increment_mode(DMA1, DMA_STREAM6);
-    dma_set_transfer_mode(DMA1, DMA_STREAM6, DMA_SxCR_DIR_MEM_TO_PERIPHERAL);
-    dma_set_peripheral_address(DMA1, DMA_STREAM6, (uint32_t)&TIM4_CCR1);
-    dma_set_memory_address(DMA1, DMA_STREAM6, (uint32_t)(&ws2812_status.bit_buffer[0]));
-    dma_set_number_of_data(DMA1, DMA_STREAM6, WS2812_BIT_BUFFER_SIZE);
-    dma_enable_half_transfer_interrupt(DMA1, DMA_STREAM6);
-    dma_enable_transfer_complete_interrupt(DMA1, DMA_STREAM6);
-    dma_channel_select(DMA1, DMA_STREAM6, DMA_SxCR_CHSEL_2);
-    nvic_clear_pending_irq(NVIC_DMA1_STREAM6_IRQ);
-    nvic_set_priority(NVIC_DMA1_STREAM6_IRQ, 0);
-    nvic_enable_irq(NVIC_DMA1_STREAM6_IRQ);
+	rcc_periph_clock_enable(WS_RCC_DMA);
+    nvic_enable_irq(WS_NVIC_DMA_STREAM_IRQ);
+	dma_stream_reset(WS_DMA, WS_DMA_STREAM);
+    dma_set_priority(WS_DMA, WS_DMA_STREAM, DMA_SxCR_PL_VERY_HIGH);
+    dma_set_memory_size(WS_DMA, WS_DMA_STREAM, DMA_SxCR_MSIZE_16BIT);
+    dma_set_peripheral_size(WS_DMA, WS_DMA_STREAM, DMA_SxCR_PSIZE_16BIT);
+    dma_enable_circular_mode(WS_DMA, WS_DMA_STREAM);
+    dma_enable_memory_increment_mode(WS_DMA, WS_DMA_STREAM);
+    dma_set_transfer_mode(WS_DMA, WS_DMA_STREAM, DMA_SxCR_DIR_MEM_TO_PERIPHERAL);
+    dma_set_peripheral_address(WS_DMA, WS_DMA_STREAM, (uint32_t)&WS_TIM_CCR);
+    dma_set_memory_address(WS_DMA, WS_DMA_STREAM, (uint32_t)(&ws2812_status.bit_buffer[0]));
+    dma_set_number_of_data(WS_DMA, WS_DMA_STREAM, WS2812_BIT_BUFFER_SIZE);
+    dma_enable_half_transfer_interrupt(WS_DMA, WS_DMA_STREAM);
+    dma_enable_transfer_complete_interrupt(WS_DMA, WS_DMA_STREAM);
+    dma_channel_select(WS_DMA, WS_DMA_STREAM, DMA_SxCR_CHSEL_2);
+    nvic_clear_pending_irq(WS_NVIC_DMA_STREAM_IRQ);
+    nvic_set_priority(WS_NVIC_DMA_STREAM_IRQ, 0);
+    nvic_enable_irq(WS_NVIC_DMA_STREAM_IRQ);
 }
 
 /* Interrupt handlers. */
-void dma1_stream6_isr(void)
+void ws_dma_stream_isr(void)
 {
-    if (dma_get_interrupt_flag(DMA1, DMA_STREAM6, DMA_HTIF) != 0) {
-        dma_clear_interrupt_flags(DMA1, DMA_STREAM6, DMA_HTIF);
+    if (dma_get_interrupt_flag(WS_DMA, WS_DMA_STREAM, DMA_HTIF) != 0) {
+        dma_clear_interrupt_flags(WS_DMA, WS_DMA_STREAM, DMA_HTIF);
 
-        gpio_toggle(GPIOD, GPIO13);
+		led_on();
 
         if(ws2812_status.stage != ws2812_idle){
         	if(ws2812_status.stage == ws2812_done) {
@@ -225,14 +225,14 @@ void dma1_stream6_isr(void)
         } else {
         	ws2812_clear_bit_buffer();
         	ws2812_dma_stop();
-        	timer_set_oc_value(TIM4, TIM_OC1, 0);
+        	timer_set_oc_value(WS_TIM, TIM_OC1, 0);
         }
 
     }
-    if (dma_get_interrupt_flag(DMA1, DMA_STREAM6, DMA_TCIF) != 0) {
-        dma_clear_interrupt_flags(DMA1, DMA_STREAM6, DMA_TCIF);
+    if (dma_get_interrupt_flag(WS_DMA, WS_DMA_STREAM, DMA_TCIF) != 0) {
+        dma_clear_interrupt_flags(WS_DMA, WS_DMA_STREAM, DMA_TCIF);
 
-        gpio_toggle(GPIOD, GPIO14);
+ 		led_off();
 
         if(ws2812_status.stage != ws2812_idle){
             if(ws2812_status.stage == ws2812_done) {
@@ -244,7 +244,7 @@ void dma1_stream6_isr(void)
         } else {
         	ws2812_clear_bit_buffer();
         	ws2812_dma_stop();
-        	timer_set_oc_value(TIM4, TIM_OC1, 0);
+        	timer_set_oc_value(WS_TIM, TIM_OC1, 0);
         }
 
     }
