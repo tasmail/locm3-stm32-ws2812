@@ -219,22 +219,27 @@ static enum usbd_request_return_codes cdcacm_control_request(
 		case USB_CDC_REQ_SET_CONTROL_LINE_STATE: {	// 0x22
 			uint16_t rtsdtr = req->wValue;	// DTR is bit 0, RTS is bit 1
 			g_usbd_is_connected = rtsdtr & 1;
-			break;
+			if (complete)
+				(*complete)(usbd_dev, req);
+			return USBD_REQ_HANDLED;
 		}
 
 		case USB_CDC_REQ_SET_LINE_CODING:	// 0x20
 			if (*len < sizeof(struct usb_cdc_line_coding)) {
 				return 0;
 			}
-			break;
+			if (complete)
+				(*complete)(usbd_dev, req);
+			return USBD_REQ_HANDLED;
 
 		case USB_CDC_REQ_GET_LINE_CODING:
 			*buf = (uint8_t *)&line_coding;
-			break;
+			if (complete)
+				(*complete)(usbd_dev, req);
+			return USBD_REQ_HANDLED;
 	}
-	if (complete)
-		(*complete)(usbd_dev, req);
-	return USBD_REQ_HANDLED;
+	
+	return USBD_REQ_NEXT_CALLBACK;
 }
 
 static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -408,6 +413,10 @@ void usb_vcp_init(void) {
 
 	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
 			GPIO9 | GPIO11 | GPIO12);
+
+	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP,
+			    GPIO_OSPEED_2MHZ, GPIO11);
+
 	gpio_set_af(GPIOA, GPIO_AF10, GPIO9 | GPIO11 | GPIO12);
 
 	fill_usb_serial();
