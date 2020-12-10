@@ -214,9 +214,6 @@ static enum usbd_request_return_codes cdcacm_control_request(
 		struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
 		usbd_control_complete_callback *complete)
 {
-	(void)complete;
-	(void)usbd_dev;
-
 	switch (req->bRequest) {
 
 		case USB_CDC_REQ_SET_CONTROL_LINE_STATE: {	// 0x22
