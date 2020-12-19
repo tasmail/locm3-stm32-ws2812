@@ -232,16 +232,11 @@ int main(void)
    
     led_off();
 
+    running_led(COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, 2, 110000);
+
     while (1) {
-        //int delay = 600000;
-//        int width = 8;
-  //      running_led(COLOR_BRIGHTNESS, 0, 0, width, delay);
-   //     running_led(0, COLOR_BRIGHTNESS, 0, width, delay);
-     //   running_led(0, 0, COLOR_BRIGHTNESS, width, delay);
-      //  running_led(COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, width, delay);
 
-      do_flash(2000000);
-
+        do_flash(4000000);
     }
    
     return 0;
