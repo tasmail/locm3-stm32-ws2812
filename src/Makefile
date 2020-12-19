@@ -19,7 +19,7 @@
 
 BINARY = ws2812
 
-OBJS = main.o ws2812.o blinking.o
+OBJS = main.o ws2812.o blinking.o usb.o StrPrintf.o
 
 CFLAGS = -std=c99
 

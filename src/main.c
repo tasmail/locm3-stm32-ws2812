@@ -27,6 +27,7 @@
 
 #include "ws2812.h"
 #include "blinking.h"
+#include "usb.h" 
 
 #define LED_COUNT (64)
 
@@ -226,6 +227,8 @@ int main(void)
 
     led_on();
 
+    usb_vcp_init();
+
     ws2812_init();
 
     leds_init();
@@ -241,3 +244,8 @@ int main(void)
    
     return 0;
 }
+
+
+
+
+
