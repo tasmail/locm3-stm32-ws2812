@@ -28,6 +28,8 @@
 #include "ws2812.h"
 #include "blinking.h"
 #include "usb.h" 
+#include "systick.h" 
+#include "uart.h" 
 
 #define LED_COUNT (64)
 
@@ -223,11 +225,23 @@ int main(void)
 {
     clock_setup();
 
+    systick_init();
+
+	uart_init();
+
+	uart_printf("\n*****\n");
+	uart_printf("***** Starting (UART) ...\n");
+	uart_printf("*****\n");
+
+	usb_vcp_init();
+
+	usb_vcp_printf("\n*****\n");
+	usb_vcp_printf("***** Starting (USB) ...\n");
+	usb_vcp_printf("*****\n");
+
     initialize_blinking();
 
     led_on();
-
-    usb_vcp_init();
 
     ws2812_init();
 
