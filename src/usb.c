@@ -33,6 +33,7 @@
 
 #include "CBUF.h"
 #include "StrPrintf.h"
+#include "uart.h"
 
 typedef struct {
 	volatile	uint16_t	m_get_idx;
@@ -191,8 +192,8 @@ static const struct usb_config_descriptor config = {
 };
 
 static const char *usb_strings[] = {
-	"Manufacturer",
-	"STM32F4 CDC Demo",
+	"maxcrc GmbH",
+	"Neopixel Serial Controller",
 	usb_serial,
 };
 #define NUM_USB_STRINGS (sizeof(usb_strings) / sizeof(usb_strings[0]))
@@ -208,19 +209,20 @@ static const struct usb_cdc_line_coding line_coding = {
 uint8_t usbd_control_buffer[128];
 
 #define USB_CDC_REQ_GET_LINE_CODING			0x21 // Not defined in libopencm3
-
 static enum usbd_request_return_codes cdcacm_control_request(
-		usbd_device *usbd_dev,
-		struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
-		usbd_control_complete_callback *complete)
+               usbd_device *usbd_dev,
+               struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
+               usbd_control_complete_callback *complete)
 {
+	(void)complete;
+	(void)buf;
+	(void)usbd_dev;
+
 	switch (req->bRequest) {
 
 		case USB_CDC_REQ_SET_CONTROL_LINE_STATE: {	// 0x22
 			uint16_t rtsdtr = req->wValue;	// DTR is bit 0, RTS is bit 1
 			g_usbd_is_connected = rtsdtr & 1;
-			if (complete)
-				(*complete)(usbd_dev, req);
 			return USBD_REQ_HANDLED;
 		}
 
@@ -228,18 +230,13 @@ static enum usbd_request_return_codes cdcacm_control_request(
 			if (*len < sizeof(struct usb_cdc_line_coding)) {
 				return 0;
 			}
-			if (complete)
-				(*complete)(usbd_dev, req);
 			return USBD_REQ_HANDLED;
 
 		case USB_CDC_REQ_GET_LINE_CODING:
 			*buf = (uint8_t *)&line_coding;
-			if (complete)
-				(*complete)(usbd_dev, req);
 			return USBD_REQ_HANDLED;
 	}
-	
-	return USBD_REQ_NEXT_CALLBACK;
+	return USBD_REQ_HANDLED;
 }
 
 static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -400,6 +397,8 @@ static void fill_usb_serial(void) {
 		*ser_str++ = hex_digit[(*ser >> 0) & 0x0f];
 	}
 	*ser_str = '\0';
+
+	uart_printf("\n\nUSB Serial: %s\n\n", usb_serial);
 }
 
 void usb_vcp_init(void) {
@@ -413,10 +412,8 @@ void usb_vcp_init(void) {
 
 	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
 			GPIO9 | GPIO11 | GPIO12);
-
 	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP,
-			    GPIO_OSPEED_2MHZ, GPIO11);
-
+                           GPIO_OSPEED_2MHZ, GPIO11);			
 	gpio_set_af(GPIOA, GPIO_AF10, GPIO9 | GPIO11 | GPIO12);
 
 	fill_usb_serial();

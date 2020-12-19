@@ -66,6 +66,15 @@ void uart_send_byte(uint8_t ch) {
     usart_send_blocking(USART2, ch);
 }
 
+void uart_send_str(const char *str) {
+	for (const char *pos = str; *pos; pos++) {
+		uart_send_byte(*pos);
+		if (*pos == '\n') {
+			uart_send_byte('\r');
+		}
+	}
+}
+
 void uart_send_strn(const char *str, size_t len) {
 	for (const char *end = str + len; str < end; str++) {
 		uart_send_byte(*str);

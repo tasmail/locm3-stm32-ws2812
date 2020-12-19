@@ -28,4 +28,6 @@ void systick_init(void);
 
 void msleep(uint32_t msecs);
 
+#define sleep msleep
+
 #endif  // SYSTICK_H

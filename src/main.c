@@ -158,15 +158,6 @@ void leds_color(int r, int g, int b)
     }    
 }
 
-void sleep(int delay);
-
-void sleep(int delay) 
-{
-    for(int i=0; i< delay; i++){
-        __asm("nop");
-    }
-}
-
 void do_flash(int delay);
 void do_flash(int delay)
 {
@@ -229,33 +220,82 @@ int main(void)
 
 	uart_init();
 
-	uart_printf("\n*****\n");
-	uart_printf("***** Starting (UART) ...\n");
-	uart_printf("*****\n");
+	uart_send_str("\n***** Starting (UART) ...\n");
 
 	usb_vcp_init();
 
-	usb_vcp_printf("\n*****\n");
-	usb_vcp_printf("***** Starting (USB) ...\n");
-	usb_vcp_printf("*****\n");
-
+	uart_send_str("\n***** Starting (USB) ...\n");
+	
     initialize_blinking();
+
+	uart_send_str("\n***** Starting (LED) ...\n");
 
     led_on();
 
     ws2812_init();
 
+	uart_send_str("\n***** Starting (WS2812) ...\n");
+
     leds_init();
    
     led_off();
 
-    running_led(COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, 2, 110000);
+    running_led(COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, COLOR_BRIGHTNESS, 2, 100);
 
-    while (1) {
+	uint32_t last_millis = system_millis;
+	uint32_t blink = 0;
 
-        do_flash(4000000);
-    }
-   
+	uart_send_str("\n***** System started *****\n");
+    usb_vcp_printf("\n***** System started *****\n");
+
+	while (1) {
+
+		char buf[128];
+		size_t len = 0;
+        uint32_t blink_period = 100;
+		while (1) {
+			if (len >= sizeof(buf)) {
+				break;
+			}
+			if (usb_vcp_avail()) {
+				led_toggle();
+				char ch = usb_vcp_recv_byte();
+				usb_vcp_send_byte(ch);
+				if (ch == '\r') {
+					usb_vcp_send_byte('\n');
+				}
+				if (ch == '\r' || ch == '\n') {
+					break;
+				}
+				buf[len++] = ch;
+			}
+
+            if (usb_vcp_is_connected()) {
+                blink_period = 1000;
+            } else {
+                do_flash(677);
+                blink_period = 100;
+            }
+            
+            if (system_millis - last_millis > blink_period) {
+                if (blink <= 3) {
+                    led_toggle();
+                }
+                blink = (blink + 1) % 10;
+                last_millis = system_millis;
+            }
+
+			__WFI();
+		}
+		uart_send_strn("Line: ", 6);
+		uart_send_strn(buf, len);
+		uart_send_strn("\r\n", 2);
+
+		usb_vcp_send_strn("Line: ", 6);
+		usb_vcp_send_strn(buf, len);
+		usb_vcp_send_strn("\r\n", 2);
+	}
+
     return 0;
 }
 

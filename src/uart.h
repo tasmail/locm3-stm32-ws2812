@@ -25,6 +25,7 @@ void uart_init(void);
 void uart_printf(const char *fmt, ...);
 
 void uart_send_byte(uint8_t ch);
+void uart_send_str(const char *str);
 void uart_send_strn(const char *str, size_t len);
 void uart_send_strn_cooked(const char *str, size_t len);
 
